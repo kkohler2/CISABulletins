@@ -1,2 +1,5 @@
-# CISABulletins
 Utility to rewrite CISA Bulletins to organize group vulnerabilities by product name and sort product name with collapsed sections for faster reading.
+
+Weekly CISA Bulletins, accessible from https://www.cisa.gov/news-events/bulletins, organize the vulnerabilities by severity.  Within the severities, there does not appear to be any order to the listings, making it potentially time consuming to scan the document for relevant data.
+
+CISABulletins seeks to remedy this.  It reads the next available bulletin, after the last one read, or the last one available if the utility has never been run.  The data is read in, parsed out and a new html file is generated with the same information, but grouped by product within the severity classifications.  The products are sorted and presented as collapsed sections.  Thus, it is easy and quick to scan through the document looking only for the products you care about, if they are listed.  Just click on a desired product to show the volunerability list for the product.
