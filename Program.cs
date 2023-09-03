@@ -115,7 +115,7 @@ namespace CISABulletins
             {
                 writer.WriteLine("<html>");
                 writer.WriteLine("<head>");
-                writer.WriteLine($"<h2><center>{title}</center></h2>");
+                writer.WriteLine($"<h2><center><a href=\"{url}\">{title}</a></center></h2>");
                 writer.WriteLine("<style>");
                 writer.WriteLine("table { ");
                 writer.WriteLine("\twidth: 90%; ");
@@ -124,7 +124,7 @@ namespace CISABulletins
                 writer.WriteLine("\t}");
                 writer.WriteLine("");
                 writer.WriteLine("th { ");
-                writer.WriteLine("\tbackground: #3498db; ");
+                writer.WriteLine("\tbackground: darkblue; ");
                 writer.WriteLine("\tcolor: white; ");
                 writer.WriteLine("\tfont-weight: bold; ");
                 writer.WriteLine("\t}");
@@ -153,13 +153,18 @@ namespace CISABulletins
                 writer.WriteLine("</style>");
                 writer.WriteLine("</head>");
                 writer.WriteLine("<body>");
-                WriteSection("High Vulnerabilities", highVulnerabilitiesTable, writer);
+                writer.WriteLine("<div <p>The CISA Vulnerability Bulletin provides a summary of new vulnerabilities that have been recorded by the <a href=\"https://www.nist.gov/\">National Institute of Standards and Technology</a> (NIST)<br/>");
+                writer.WriteLine("<a href=\"https://nvd.nist.gov/\">National Vulnerability Database</a> (NVD) in the past week. NVD is sponsored by CISA. In some cases, the vulnerabilities in the bulletin may not yet have assigned CVSS scores.<br/>");
+                writer.WriteLine("Please visit NVD for updated vulnerability entries, which include CVSS scores once they are available.</p><p>Vulnerabilities are based on the <a href=\"https://cve.mitre.org/\">Common Vulnerabilities and Exposures</a> (CVE) vulnerability naming standard and are organized according to severity, determined by the <a href=\"https://nvd.nist.gov/cvss.cfm\">Common Vulnerability Scoring System</a> (CVSS) standard.<br/>");
+                writer.WriteLine("The division of high, medium, and low severities correspond to the following scores:</p><ul><li><a href=\"#high_v_title\">High</a>: vulnerabilities with a CVSS base score of 7.0–10.0</li><li><a href=\"#medium_v_title\">Medium</a>: vulnerabilities with a CVSS base score of 4.0–6.9</li><li><a href=\"#low_v_title\">Low</a>: vulnerabilities with a CVSS base score of 0.0–3.9</li>");
+                writer.WriteLine("<li><a href=\"#unassigned_v_title\">Unassigned</a>: vulnerabilities without a CVSS base score</li></div>");
+                WriteSection("High Vulnerabilities", "high_v_title", highVulnerabilitiesTable, writer);
                 writer.WriteLine("<br/>");
-                WriteSection("Medium Vulnerabilities", mediumVulnerabilitiesTable, writer);
+                WriteSection("Medium Vulnerabilities", "medium_v_title", mediumVulnerabilitiesTable, writer);
                 writer.WriteLine("<br/>");
-                WriteSection("Low Vulnerabilities", lowVulnerabilitiesTable, writer);
+                WriteSection("Low Vulnerabilities", "low_v_title", lowVulnerabilitiesTable, writer);
                 writer.WriteLine("<br/>");
-                WriteSection("Unassigned Vulnerabilities", notAssignedVulnerabilitiesTable, writer);
+                WriteSection("Unassigned Vulnerabilities", "unassigned_v_title", notAssignedVulnerabilitiesTable, writer);
                 writer.WriteLine("<br/>");
                 writer.WriteLine("</body>");
                 writer.WriteLine("</html>");
@@ -167,9 +172,9 @@ namespace CISABulletins
             Process.Start("explorer", "\"" + filename + "\"");
         }
 
-        public static void WriteSection(string sectionName, Dictionary<string, List<Row>> data, StreamWriter writer)
+        public static void WriteSection(string sectionName, string link, Dictionary<string, List<Row>> data, StreamWriter writer)
         {
-            writer.WriteLine($"<h3><b>{sectionName}</b></h3>");
+            writer.WriteLine($"<h3 id=\"{link}\"><b>{sectionName}</b></h3>");
             var keys = data.Keys.OrderBy(x => x).ToList();
             foreach(string key in keys)
             {
@@ -185,9 +190,18 @@ namespace CISABulletins
                 writer.WriteLine("     </tr>");
                 writer.WriteLine(" </thead>");
                 writer.WriteLine(" <tbody>");
+                int i = 0;                
                 foreach (Row row in data[key])
                 {
-                    writer.WriteLine("     <tr>");
+                    i++;
+                    if (i % 2 == 1)
+                    {
+                        writer.WriteLine("     <tr style=\"background-color: aliceblue\">");
+                    }
+                    else
+                    {
+                        writer.WriteLine("     <tr>");
+                    }
                     writer.WriteLine($"         <td>{row.Description}</td>");
                     writer.WriteLine($"         <td>{row.Published}</td>");
                     writer.WriteLine($"         <td>{row.Score}</td>");
