@@ -5,8 +5,8 @@
     <TargetFramework>net7.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyVersion>1.1.0</AssemblyVersion>
-    <FileVersionVersion>1.1.0</FileVersionVersion>
+    <AssemblyVersion>1.1.1</AssemblyVersion>
+    <FileVersionVersion>1.1.1</FileVersionVersion>
   </PropertyGroup>
 
   <ItemGroup>

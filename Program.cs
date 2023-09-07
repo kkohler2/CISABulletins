@@ -73,17 +73,14 @@ namespace CISABulletins
             doc.LoadHtml(content);
             var title = doc.DocumentNode.SelectSingleNode("//h1[@class='c-page-title__title']/span").InnerText;  // h2 = High Vulnerabilities
 
-            nodes = doc.DocumentNode.SelectNodes("//div[@id='medium_v']");  // h2 = High Vulnerabilities
+            nodes = doc.DocumentNode.SelectNodes("//div[@id='high_v']/table");  // h2 = High Vulnerabilities
             Dictionary<string, List<Row>> highVulnerabilitiesTable = new Dictionary<string, List<Row>>();
             foreach (var node in nodes)
             {
-                if (node.ChildNodes[0].Name == "h2")
+                if (node.Name == "table")
                 {
-                    innerHtml = node.InnerHtml;
-                    start = innerHtml.IndexOf("<table");
-                    end = innerHtml.IndexOf("</table>");
-                    table = innerHtml.Substring(start, end - start + 8);
-                    highVulnerabilitiesTable = ParseTable(table);
+                    innerHtml = node.OuterHtml;
+                    highVulnerabilitiesTable = ParseTable(innerHtml);
                     break;
                 }
             }
@@ -228,6 +225,7 @@ namespace CISABulletins
                 {
                     product = product.Substring(0, index);
                 }
+                product = product.Replace("\n", "").Replace("\t", " ").TrimStart();
                 if (!tableData.Keys.Contains(product))
                 {
                     tableData.Add(product, new List<Row>());
