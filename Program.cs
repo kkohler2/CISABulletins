@@ -1,6 +1,5 @@
 ﻿using HtmlAgilityPack;
 using System.Diagnostics;
-using System.IO;
 
 namespace CISABulletins
 {
@@ -74,13 +73,14 @@ namespace CISABulletins
             var title = doc.DocumentNode.SelectSingleNode("//h1[@class='c-page-title__title']/span").InnerText;  // h2 = High Vulnerabilities
 
             nodes = doc.DocumentNode.SelectNodes("//div[@id='high_v']/table");  // h2 = High Vulnerabilities
-            Dictionary<string, List<Row>> highVulnerabilitiesTable = new Dictionary<string, List<Row>>();
+            Dictionary<string, List<Row>>? highVulnerabilitiesTable = new Dictionary<string, List<Row>>();
+            string? highVulnerabilitiesAlternateText = null;
             foreach (var node in nodes)
             {
                 if (node.Name == "table")
                 {
                     innerHtml = node.OuterHtml;
-                    highVulnerabilitiesTable = ParseTable(innerHtml);
+                    (highVulnerabilitiesTable, highVulnerabilitiesAlternateText) = ParseTable(innerHtml);
                     break;
                 }
             }
@@ -90,21 +90,26 @@ namespace CISABulletins
             start = innerHtml.IndexOf("<table");
             end = innerHtml.IndexOf("</table>");
             table = innerHtml.Substring(start, end - start + 8);
-            Dictionary<string, List<Row>> mediumVulnerabilitiesTable = ParseTable(table);
+            (Dictionary<string, List<Row>>? mediumVulnerabilitiesTable, string? mediumVulnerabilitiesAlternateText) = ParseTable(table);
 
             nodes = doc.DocumentNode.SelectNodes("//div[@id='low_v']");
             innerHtml = nodes[0].InnerHtml;
             start = innerHtml.IndexOf("<table");
             end = innerHtml.IndexOf("</table>");
             table = innerHtml.Substring(start, end - start + 8);
-            Dictionary<string, List<Row>> lowVulnerabilitiesTable = ParseTable(table);
+            (Dictionary<string, List<Row>>? lowVulnerabilitiesTable, string? lowVulnerabilitiesAlternateText) = ParseTable(table);
 
+            Dictionary<string, List<Row>>? notAssignedVulnerabilitiesTable = null;
+            string? notAssignedVulnerabilitiesAlternateText = null;
             nodes = doc.DocumentNode.SelectNodes("//div[@id='snya_v']");
-            innerHtml = nodes[0].InnerHtml;
-            start = innerHtml.IndexOf("<table");
-            end = innerHtml.IndexOf("</table>");
-            table = innerHtml.Substring(start, end - start + 8);
-            Dictionary<string, List<Row>> notAssignedVulnerabilitiesTable = ParseTable(table);
+            if (nodes != null)
+            {
+                innerHtml = nodes[0].InnerHtml;
+                start = innerHtml.IndexOf("<table");
+                end = innerHtml.IndexOf("</table>");
+                table = innerHtml.Substring(start, end - start + 8);
+                (notAssignedVulnerabilitiesTable, notAssignedVulnerabilitiesAlternateText) = ParseTable(table);
+            }
 
             string filename = Path.Combine(directory, "CISABulletin.htm");
 
@@ -155,13 +160,16 @@ namespace CISABulletins
                 writer.WriteLine("Please visit NVD for updated vulnerability entries, which include CVSS scores once they are available.</p><p>Vulnerabilities are based on the <a href=\"https://cve.mitre.org/\">Common Vulnerabilities and Exposures</a> (CVE) vulnerability naming standard and are organized according to severity, determined by the <a href=\"https://nvd.nist.gov/cvss.cfm\">Common Vulnerability Scoring System</a> (CVSS) standard.<br/>");
                 writer.WriteLine("The division of high, medium, and low severities correspond to the following scores:</p><ul><li><a href=\"#high_v_title\">High</a>: vulnerabilities with a CVSS base score of 7.0–10.0</li><li><a href=\"#medium_v_title\">Medium</a>: vulnerabilities with a CVSS base score of 4.0–6.9</li><li><a href=\"#low_v_title\">Low</a>: vulnerabilities with a CVSS base score of 0.0–3.9</li>");
                 writer.WriteLine("<li><a href=\"#unassigned_v_title\">Unassigned</a>: vulnerabilities without a CVSS base score</li></div>");
-                WriteSection("High Vulnerabilities", "high_v_title", highVulnerabilitiesTable, writer);
+                WriteSection("High Vulnerabilities", "high_v_title", highVulnerabilitiesTable, writer, highVulnerabilitiesAlternateText);
                 writer.WriteLine("<br/>");
-                WriteSection("Medium Vulnerabilities", "medium_v_title", mediumVulnerabilitiesTable, writer);
+                WriteSection("Medium Vulnerabilities", "medium_v_title", mediumVulnerabilitiesTable, writer, mediumVulnerabilitiesAlternateText);
                 writer.WriteLine("<br/>");
-                WriteSection("Low Vulnerabilities", "low_v_title", lowVulnerabilitiesTable, writer);
+                WriteSection("Low Vulnerabilities", "low_v_title", lowVulnerabilitiesTable, writer, lowVulnerabilitiesAlternateText);
                 writer.WriteLine("<br/>");
-                WriteSection("Unassigned Vulnerabilities", "unassigned_v_title", notAssignedVulnerabilitiesTable, writer);
+                if (notAssignedVulnerabilitiesTable != null || notAssignedVulnerabilitiesAlternateText != null)
+                {
+                    WriteSection("Unassigned Vulnerabilities", "unassigned_v_title", notAssignedVulnerabilitiesTable, writer, notAssignedVulnerabilitiesAlternateText);
+                }
                 writer.WriteLine("<br/>");
                 writer.WriteLine("</body>");
                 writer.WriteLine("</html>");
@@ -169,75 +177,91 @@ namespace CISABulletins
             Process.Start("explorer", "\"" + filename + "\"");
         }
 
-        public static void WriteSection(string sectionName, string link, Dictionary<string, List<Row>> data, StreamWriter writer)
+        public static void WriteSection(string sectionName, string link, Dictionary<string, List<Row>>? data, StreamWriter writer, string? alternateText)
         {
             writer.WriteLine($"<h3 id=\"{link}\"><b>{sectionName}</b></h3>");
-            var keys = data.Keys.OrderBy(x => x).ToList();
-            foreach(string key in keys)
+            if (data == null)
             {
-                writer.WriteLine("<details>");
-                writer.WriteLine($"<summary>{key}</summary>");
-                writer.WriteLine("<table>");
-                writer.WriteLine(" <thead>");
-                writer.WriteLine("     <tr>");
-                writer.WriteLine("         <th>Description</th>");
-                writer.WriteLine("         <th>Published</th>");
-                writer.WriteLine("         <th>CVSS Score</th>");
-                writer.WriteLine("         <th>Source & Patch Info</th>");
-                writer.WriteLine("     </tr>");
-                writer.WriteLine(" </thead>");
-                writer.WriteLine(" <tbody>");
-                int i = 0;                
-                foreach (Row row in data[key])
+                writer.WriteLine($"{alternateText}");
+            }
+            else
+            {
+                var keys = data.Keys.OrderBy(x => x).ToList();
+                foreach (string key in keys)
                 {
-                    i++;
-                    if (i % 2 == 1)
-                    {
-                        writer.WriteLine("     <tr style=\"background-color: aliceblue\">");
-                    }
-                    else
-                    {
-                        writer.WriteLine("     <tr>");
-                    }
-                    writer.WriteLine($"         <td>{row.Description}</td>");
-                    writer.WriteLine($"         <td>{row.Published}</td>");
-                    writer.WriteLine($"         <td>{row.Score}</td>");
-                    writer.WriteLine($"         <td>{row.SourceAndPatch}</td>");
+                    writer.WriteLine("<details>");
+                    writer.WriteLine($"<summary>{key}</summary>");
+                    writer.WriteLine("<table>");
+                    writer.WriteLine(" <thead>");
+                    writer.WriteLine("     <tr>");
+                    writer.WriteLine("         <th>Description</th>");
+                    writer.WriteLine("         <th>Published</th>");
+                    writer.WriteLine("         <th>CVSS Score</th>");
+                    writer.WriteLine("         <th>Source & Patch Info</th>");
                     writer.WriteLine("     </tr>");
+                    writer.WriteLine(" </thead>");
+                    writer.WriteLine(" <tbody>");
+                    int i = 0;
+                    foreach (Row row in data[key])
+                    {
+                        i++;
+                        if (i % 2 == 1)
+                        {
+                            writer.WriteLine("     <tr style=\"background-color: aliceblue\">");
+                        }
+                        else
+                        {
+                            writer.WriteLine("     <tr>");
+                        }
+                        writer.WriteLine($"         <td>{row.Description}</td>");
+                        writer.WriteLine($"         <td>{row.Published}</td>");
+                        writer.WriteLine($"         <td>{row.Score}</td>");
+                        writer.WriteLine($"         <td>{row.SourceAndPatch}</td>");
+                        writer.WriteLine("     </tr>");
+                    }
+                    writer.WriteLine(" </tbody>");
+                    writer.WriteLine("</table>");
+                    writer.WriteLine("</details>");
                 }
-                writer.WriteLine(" </tbody>");
-                writer.WriteLine("</table>");
-                writer.WriteLine("</details>");
             }
         }
 
-        public static Dictionary<string, List<Row>> ParseTable(string html)
+        public static (Dictionary<string, List<Row>>?,string?) ParseTable(string html)
         {
             Dictionary<string, List<Row>> tableData = new Dictionary<string, List<Row>>();
+            string alternateText = null;
             var doc = new HtmlDocument();
             doc.LoadHtml(html);
             var nodes = doc.DocumentNode.SelectNodes("//table/tbody/tr"); 
-            foreach (var node in nodes)
+            if (nodes.Count == 1 && nodes[0].ChildNodes.Count == 1)
             {
-                string product = node.ChildNodes[0].InnerHtml;
-                int index = product.IndexOf("<br>");
-                if (index != -1)
-                {
-                    product = product.Substring(0, index);
-                }
-                product = product.Replace("\n", "").Replace("\t", " ").TrimStart();
-                if (!tableData.Keys.Contains(product))
-                {
-                    tableData.Add(product, new List<Row>());
-                }
-                Row row = new Row();
-                row.Description = node.ChildNodes[1].InnerHtml;
-                row.Published = node.ChildNodes[2].InnerHtml;
-                row.Score = node.ChildNodes[3].InnerHtml;
-                row.SourceAndPatch = node.ChildNodes[4].InnerHtml;
-                tableData[product].Add(row);
+                tableData = null;
+                alternateText = nodes[0].ChildNodes[0].InnerText;                
             }
-            return tableData;
+            else
+            {
+                foreach (var node in nodes)
+                {
+                    string product = node.ChildNodes[0].InnerHtml;
+                    int index = product.IndexOf("<br>");
+                    if (index != -1)
+                    {
+                        product = product.Substring(0, index);
+                    }
+                    product = product.Replace("\n", "").Replace("\t", " ").TrimStart();
+                    if (!tableData.Keys.Contains(product))
+                    {
+                        tableData.Add(product, new List<Row>());
+                    }
+                    Row row = new Row();
+                    row.Description = node.ChildNodes[1].InnerHtml;
+                    row.Published = node.ChildNodes[2].InnerHtml;
+                    row.Score = node.ChildNodes[3].InnerHtml;
+                    row.SourceAndPatch = node.ChildNodes[4].InnerHtml;
+                    tableData[product].Add(row);
+                }
+            }
+            return (tableData, alternateText);
         }
     }
 }
